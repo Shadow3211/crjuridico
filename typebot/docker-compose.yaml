@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  typebot-builder:
+    image: baptistearno/typebot-builder:latest
+    restart: always
+    ports:
+      - "3000:3000" # Substitua pela porta que sua aplicação usa
+    environment:
+      - DATABASE_URL=postgresql://n8n_user:n8n_password@db:5432/typebot?schema=public
+      - REDIS_URL=redis://redis:6379
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXT_PUBLIC_VIEWER_URL=http://localhost:3001
+      - ENCRYPTION_SECRET=K+Bar660Ofaec7v1jHC25tAn3l2b7c81
+      - ADMIN_EMAIL=pedroaugustorodriges1@gmail.com
+      - DISABLE_SIGNUP=false
+      - SMTP_AUTH_DISABLED=false
+      - SMTP_SECURE=true
+      - SMTP_HOST=smtp.gmail.com
+      - SMTP_PORT=465
+      - SMTP_USERNAME=pedroaugustorodriges1@gmail.com
+      - SMTP_PASSWORD=zgojzmhebbmossqy
+      - NEXT_PUBLIC_SMTP_FROM=pedroaugustorodriges1@gmail.com
+      - S3_ACCESS_KEY=admin
+      - S3_SECRET_KEY=admin40302050
+      - S3_BUCKET=typebot
+      - S3_ENDPOINT=http://localhost:9000
+    networks:
+      - rede_tb
+
+    deploy:
+      resources:
+        limits:
+          memory: 1024M  # Limite de memória para o serviço
+          cpus: "0.5"  # Limite de CPU para o serviço
+
+
+  typebot-viewer:
+    image: baptistearno/typebot-viewer:latest
+    restart: always
+    ports:
+      - "3001:3000" # Substitua pela porta que sua aplicação usa
+    environment:
+      - DATABASE_URL=postgresql://n8n_user:n8n_password@db:5432/typebot?schema=public
+      - REDIS_URL=redis://redis:6379
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXT_PUBLIC_VIEWER_URL=http://localhost:3001
+      - ENCRYPTION_SECRET=K+Bar660Ofaec7v1jHC25tAn3l2b7c81
+      - SMTP_HOST=smtp.gmail.com
+      - NEXT_PUBLIC_SMTP_FROM=pedroaugustorodriges1@gmail.com
+      - S3_ACCESS_KEY=admin
+      - S3_SECRET_KEY=admin40302050
+      - S3_BUCKET=typebot
+      - S3_ENDPOINT=http://localhost:9000
+    networks:
+      - rede_tb
+
+    deploy:
+      resources:
+        limits:
+          memory: 1024M  # Limite de memória para o serviço
+          cpus: "0.5"  # Limite de CPU para o serviço
+
+  mail:
+    image: bytemark/smtp
+    restart: always
+    networks:
+      - rede_tb
+      
+volumes:
+  typebot_s3_data:
+
+networks:
+  rede_tb:
+    external: true

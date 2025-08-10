@@ -1,0 +1,116 @@
+version: '3.7'
+
+services:
+  # Redis (cache para Evolution e Typebot)
+  redis:
+    image: redis:alpine
+    container_name: tb_redis
+    restart: unless-stopped
+    networks:
+      - rede_tb
+
+  # PostgreSQL (banco para n8n, Evolution e Typebot)
+  db:
+    image: postgres:13
+    container_name: tb_n8n_db
+    environment:
+      - POSTGRES_USER=n8n_user
+      - POSTGRES_PASSWORD=n8n_password
+      - POSTGRES_DB=n8n
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - rede_tb
+    ports:
+      - "5432:5432"
+
+  # Evolution API
+  evolution:
+    image: evoapicloud/evolution-api:v2.3.1
+    container_name: tb_evolution
+    depends_on:
+      - redis
+      - db
+    volumes:
+      - evolution_instances:/evolution/instances
+    environment:
+      # WhatsApp / Instâncias
+      - SERVER_URL=http://localhost:8080
+      - AUTHENTICATION_API_KEY=429683C4C977415CAAFCCE10F7D57E11
+      - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
+      - DEL_INSTANCE=false
+      - QRCODE_LIMIT=1902
+      - LANGUAGE=pt-BR
+
+      # Banco de dados (usar mesmo DB do n8n)
+      - DATABASE_ENABLED=true
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://n8n_user:n8n_password@db:5432/n8n
+      - DATABASE_CONNECTION_CLIENT_NAME=evolution
+      - DATABASE_SAVE_DATA_INSTANCE=true
+      - DATABASE_SAVE_DATA_NEW_MESSAGE=true
+      - DATABASE_SAVE_MESSAGE_UPDATE=true
+      - DATABASE_SAVE_DATA_CONTACTS=true
+      - DATABASE_SAVE_DATA_CHATS=true
+      - DATABASE_SAVE_DATA_LABELS=true
+      - DATABASE_SAVE_DATA_HISTORIC=true
+
+      # Cache Redis
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://redis:6379/8
+      - CACHE_REDIS_PREFIX_KEY=evolution
+      - CACHE_REDIS_SAVE_INSTANCES=false
+      - CACHE_LOCAL_ENABLED=false
+
+      # Integração com Typebot
+      - TYPEBOT_ENABLED=true
+      - TYPEBOT_API_VERSION=latest
+      - TYPEBOT_URL=http://typebot:4000
+
+      # outras vars que você já tinha…
+    restart: unless-stopped
+    networks:
+      - rede_tb
+    ports:
+      - "8080:8080"
+
+  # n8n
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: tb_n8n
+    depends_on:
+      - db
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=password
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=db
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_USER=n8n_user
+      - DB_POSTGRESDB_PASSWORD=n8n_password
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - N8N_PUBLIC_API=true
+      - N8N_LOG_LEVEL=info
+      
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/root/.n8n
+    restart: unless-stopped
+    networks:
+      - rede_tb
+
+
+volumes:
+  n8n_data:
+  postgres_data:
+  evolution_instances:
+
+networks:
+  rede_tb:
+    external: true
